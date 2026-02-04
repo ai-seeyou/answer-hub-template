@@ -1,6 +1,6 @@
 /**
  * AnswerEngine - Production Answer Engine Site
- * 
+ *
  * Standalone renderer that reads hub.json and displays:
  * - Home with search, services, buying help sections
  * - Services list and detail views
@@ -12,11 +12,31 @@
 import { useState, useRef, useEffect } from 'react';
 import type { HubConfig, HubService, HubFAQ, AnswerPage } from '@/types/hub';
 import { useFuzzySearch } from '@/hooks/useFuzzySearch';
-import { asString, asArray, firstNonEmpty, normaliseIntentPhase, normaliseReviews, cn } from '@/lib/utils';
-import { 
-  ExternalLink, Menu, Search, HelpCircle, Scale, ShoppingBag, 
-  Briefcase, ArrowRight, Star, Clock, DollarSign, CheckCircle, 
-  Users, ChevronLeft, Workflow, X
+import {
+  asString,
+  asArray,
+  firstNonEmpty,
+  normaliseIntentPhase,
+  normaliseReviews,
+  cn,
+} from '@/lib/utils';
+import {
+  ExternalLink,
+  Menu,
+  Search,
+  HelpCircle,
+  Scale,
+  ShoppingBag,
+  Briefcase,
+  ArrowRight,
+  Star,
+  Clock,
+  DollarSign,
+  CheckCircle,
+  Users,
+  ChevronLeft,
+  Workflow,
+  X,
 } from 'lucide-react';
 
 interface AnswerEngineProps {
@@ -24,7 +44,32 @@ interface AnswerEngineProps {
   answerPages: AnswerPage[];
 }
 
-type ViewType = 'home' | 'services' | 'service-detail' | 'faqs' | 'proof' | 'tof' | 'mof' | 'bof' | 'answer';
+type ViewType =
+  | 'home'
+  | 'services'
+  | 'service-detail'
+  | 'faqs'
+  | 'proof'
+  | 'tof'
+  | 'mof'
+  | 'bof'
+  | 'answer';
+
+type SearchResult = {
+  type: 'service' | 'faq' | 'answer';
+  slug: string;
+  title: string;
+  subtitle?: string;
+  path?: string;
+};
+
+type EcommerceFunnel = {
+  stageLabels?: {
+    tof?: string;
+    mof?: string;
+    bof?: string;
+  };
+};
 
 const hubSections = [
   { id: 'services', label: 'Services' },
@@ -38,6 +83,8 @@ export function AnswerEngine({ hubConfig, answerPages }: AnswerEngineProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<AnswerPage | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [selectedFaqSlug, setSelectedFaqSlug] = useState<string | null>(null);
+
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -46,29 +93,49 @@ export function AnswerEngine({ hubConfig, answerPages }: AnswerEngineProps) {
   const faqs = asArray(hubConfig?.faqs);
   const proof = hubConfig?.proof;
   const brandName = asString(brand?.name, 'Answers Hub');
-  
+
   const { reviewItems, reviewSummary } = normaliseReviews(proof);
   const safeAnswerPages = asArray(answerPages);
-  
-  const tofPages = safeAnswerPages.filter(p => normaliseIntentPhase(p?.intent_phase) === 'tof');
-  const mofPages = safeAnswerPages.filter(p => normaliseIntentPhase(p?.intent_phase) === 'mof');
-  const bofPages = safeAnswerPages.filter(p => normaliseIntentPhase(p?.intent_phase) === 'bof');
-  
-  const isEcommerce = safeAnswerPages.length > 0;
-  const ecommerceFunnel = hubConfig?.answersEngine?.ecommerceFunnel;
 
-  const { query, setQuery, results, hasResults } = useFuzzySearch({ 
-    faqs, services, answerPages: safeAnswerPages,
+  const tofPages = safeAnswerPages.filter(
+    (p) => normaliseIntentPhase(p?.intent_phase) === 'tof',
+  );
+  const mofPages = safeAnswerPages.filter(
+    (p) => normaliseIntentPhase(p?.intent_phase) === 'mof',
+  );
+  const bofPages = safeAnswerPages.filter(
+    (p) => normaliseIntentPhase(p?.intent_phase) === 'bof',
+  );
+
+  const isEcommerce = safeAnswerPages.length > 0;
+
+  // Important: HubConfig typing is not guaranteed to match the nested structure here,
+  // so we read it defensively and type it locally.
+  const ecommerceFunnel: EcommerceFunnel | undefined =
+    ((hubConfig as any)?.answersEngine?.ecommerceFunnel as EcommerceFunnel | undefined) ??
+    ((hubConfig as any)?.answersEngine?.ecommerce_funnel as EcommerceFunnel | undefined) ??
+    ((hubConfig as any)?.ecommerceFunnel as EcommerceFunnel | undefined);
+
+  const {
+    query,
+    setQuery,
+    results: rawResults,
+    hasResults,
+  } = useFuzzySearch({
+    faqs,
+    services,
+    answerPages: safeAnswerPages,
   });
-  
-  const [selectedFaqSlug, setSelectedFaqSlug] = useState<string | null>(null);
+
+  const results = rawResults as unknown as SearchResult[];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim() && hasResults && results.length > 0) {
       const firstResult = results[0];
+
       if (firstResult.type === 'service') {
-        const service = services.find(s => s.slug === firstResult.slug);
+        const service = services.find((s) => s.slug === firstResult.slug);
         if (service) {
           setSelectedService(service);
           setCurrentView('service-detail');
@@ -76,14 +143,15 @@ export function AnswerEngine({ hubConfig, answerPages }: AnswerEngineProps) {
       } else {
         setCurrentView('faqs');
       }
+
       setShowDropdown(false);
       setQuery('');
     }
   };
 
-  const handleSelectResult = (result: typeof results[0]) => {
+  const handleSelectResult = (result: SearchResult) => {
     if (result.type === 'service') {
-      const service = services.find(s => s.slug === result.slug);
+      const service = services.find((s) => s.slug === result.slug);
       if (service) {
         setSelectedService(service);
         setCurrentView('service-detail');
@@ -92,12 +160,13 @@ export function AnswerEngine({ hubConfig, answerPages }: AnswerEngineProps) {
       setSelectedFaqSlug(result.slug);
       setCurrentView('faqs');
     } else if (result.type === 'answer') {
-      const answer = safeAnswerPages.find(a => a.slug === result.slug);
+      const answer = safeAnswerPages.find((a) => a.slug === result.slug);
       if (answer) {
         setSelectedAnswer(answer);
         setCurrentView('answer');
       }
     }
+
     setShowDropdown(false);
     setQuery('');
   };
@@ -108,6 +177,7 @@ export function AnswerEngine({ hubConfig, answerPages }: AnswerEngineProps) {
         setShowDropdown(false);
       }
     };
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -121,7 +191,7 @@ export function AnswerEngine({ hubConfig, answerPages }: AnswerEngineProps) {
     setMobileMenuOpen(false);
   };
 
-  const navLinks = isEcommerce 
+  const navLinks = isEcommerce
     ? [...hubSections.slice(0, 2), { id: 'tof', label: 'Buying Help' }, ...hubSections.slice(2)]
     : hubSections;
 
@@ -132,15 +202,21 @@ export function AnswerEngine({ hubConfig, answerPages }: AnswerEngineProps) {
         <div className="container mx-auto px-4 py-2 flex items-center justify-between gap-2">
           <button onClick={() => navigateTo('home')} className="flex items-center shrink-0">
             {brand?.logoUrl ? (
-              <img src={brand.logoUrl} alt={brandName} className="h-7 w-auto max-w-[120px] sm:max-w-none object-contain" />
+              <img
+                src={brand.logoUrl}
+                alt={brandName}
+                className="h-7 w-auto max-w-[120px] sm:max-w-none object-contain"
+              />
             ) : (
-              <span className="font-medium text-sm text-foreground truncate max-w-[120px] sm:max-w-none">{brandName}</span>
+              <span className="font-medium text-sm text-foreground truncate max-w-[120px] sm:max-w-none">
+                {brandName}
+              </span>
             )}
           </button>
-          
+
           <nav className="hidden md:flex items-center gap-4 lg:gap-6">
             {navLinks.map((link) => (
-              <button 
+              <button
                 key={link.id}
                 onClick={() => navigateTo(link.id as ViewType)}
                 className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
@@ -162,7 +238,7 @@ export function AnswerEngine({ hubConfig, answerPages }: AnswerEngineProps) {
               </a>
             )}
 
-            <button 
+            <button
               onClick={() => setMobileMenuOpen(true)}
               className="md:hidden text-foreground hover:bg-muted p-2 rounded-lg"
             >
@@ -182,7 +258,7 @@ export function AnswerEngine({ hubConfig, answerPages }: AnswerEngineProps) {
             </button>
             <nav className="flex flex-col gap-2 mt-8">
               {navLinks.map((link) => (
-                <button 
+                <button
                   key={link.id}
                   onClick={() => navigateTo(link.id as ViewType)}
                   className="text-base font-medium text-foreground hover:text-primary transition-colors py-3 px-2 text-left"
@@ -198,67 +274,94 @@ export function AnswerEngine({ hubConfig, answerPages }: AnswerEngineProps) {
       {/* Main Content */}
       <main className="flex-1 overflow-x-hidden">
         {currentView === 'home' && (
-          <HomeView 
-            brand={brand} brandName={brandName} services={services} faqs={faqs}
-            proof={proof} reviewItems={reviewItems} reviewSummary={reviewSummary}
-            isEcommerce={isEcommerce} ecommerceFunnel={ecommerceFunnel}
-            tofPages={tofPages} mofPages={mofPages} bofPages={bofPages}
-            query={query} showDropdown={showDropdown} hasResults={hasResults}
-            results={results} suggestedQuestions={suggestedQuestions}
-            searchRef={searchRef} inputRef={inputRef}
+          <HomeView
+            brand={brand}
+            brandName={brandName}
+            services={services}
+            faqs={faqs}
+            proof={proof}
+            reviewItems={reviewItems}
+            reviewSummary={reviewSummary}
+            isEcommerce={isEcommerce}
+            ecommerceFunnel={ecommerceFunnel}
+            tofPages={tofPages}
+            mofPages={mofPages}
+            bofPages={bofPages}
+            query={query}
+            showDropdown={showDropdown}
+            hasResults={hasResults}
+            results={results}
+            suggestedQuestions={suggestedQuestions}
+            searchRef={searchRef}
+            inputRef={inputRef}
             handleSubmit={handleSubmit}
-            handleInputChange={(e) => { setQuery(e.target.value); setShowDropdown(true); }}
+            handleInputChange={(e) => {
+              setQuery(e.target.value);
+              setShowDropdown(true);
+            }}
             handleSelectResult={handleSelectResult}
             navigateTo={navigateTo}
           />
         )}
-        
+
         {currentView === 'services' && (
           <ServicesView services={services} navigateTo={navigateTo} />
         )}
-        
+
         {currentView === 'service-detail' && selectedService && (
-          <ServiceDetailView 
-            service={selectedService} faqs={faqs} brand={brand}
-            navigateTo={navigateTo} isSingleService={services.length === 1}
+          <ServiceDetailView
+            service={selectedService}
+            faqs={faqs}
+            navigateTo={navigateTo}
+            isSingleService={services.length === 1}
           />
         )}
-        
+
         {currentView === 'faqs' && (
-          <FAQsView 
-            faqs={faqs} navigateTo={navigateTo}
+          <FAQsView
+            faqs={faqs}
+            navigateTo={navigateTo}
             selectedFaqSlug={selectedFaqSlug}
             onClearSelection={() => setSelectedFaqSlug(null)}
           />
         )}
-        
+
         {currentView === 'proof' && (
           <ProofView proof={proof} reviewItems={reviewItems} reviewSummary={reviewSummary} />
         )}
-        
+
         {currentView === 'tof' && (
-          <EngineStageView 
-            stage="tof" stageLabel={ecommerceFunnel?.stageLabels?.tof || 'Research'}
-            pages={tofPages} navigateTo={navigateTo} setSelectedAnswer={setSelectedAnswer}
+          <EngineStageView
+            stage="tof"
+            stageLabel={ecommerceFunnel?.stageLabels?.tof || 'Research'}
+            pages={tofPages}
+            navigateTo={navigateTo}
+            setSelectedAnswer={setSelectedAnswer}
           />
         )}
-        
+
         {currentView === 'mof' && (
-          <EngineStageView 
-            stage="mof" stageLabel={ecommerceFunnel?.stageLabels?.mof || 'Compare'}
-            pages={mofPages} navigateTo={navigateTo} setSelectedAnswer={setSelectedAnswer}
+          <EngineStageView
+            stage="mof"
+            stageLabel={ecommerceFunnel?.stageLabels?.mof || 'Compare'}
+            pages={mofPages}
+            navigateTo={navigateTo}
+            setSelectedAnswer={setSelectedAnswer}
           />
         )}
-        
+
         {currentView === 'bof' && (
-          <EngineStageView 
-            stage="bof" stageLabel={ecommerceFunnel?.stageLabels?.bof || 'Decision'}
-            pages={bofPages} navigateTo={navigateTo} setSelectedAnswer={setSelectedAnswer}
+          <EngineStageView
+            stage="bof"
+            stageLabel={ecommerceFunnel?.stageLabels?.bof || 'Decision'}
+            pages={bofPages}
+            navigateTo={navigateTo}
+            setSelectedAnswer={setSelectedAnswer}
           />
         )}
-        
+
         {currentView === 'answer' && selectedAnswer && (
-          <AnswerDetailView answer={selectedAnswer} brand={brand} navigateTo={navigateTo} />
+          <AnswerDetailView answer={selectedAnswer} navigateTo={navigateTo} />
         )}
       </main>
 
@@ -268,7 +371,12 @@ export function AnswerEngine({ hubConfig, answerPages }: AnswerEngineProps) {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 text-xs text-muted-foreground">
               {brand?.websiteUrl && (
-                <a href={brand.websiteUrl} target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
+                <a
+                  href={brand.websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground transition-colors"
+                >
                   {asString(brand.websiteUrl).replace(/^https?:\/\//, '').replace(/\/$/, '')}
                 </a>
               )}
@@ -291,28 +399,47 @@ interface HomeViewProps {
   reviewItems: { platform?: string; source?: string | null; url?: string | null }[];
   reviewSummary: { total_review_count?: number } | null;
   isEcommerce: boolean;
-  ecommerceFunnel: HubConfig['answersEngine']['ecommerceFunnel'] | undefined;
+  ecommerceFunnel: EcommerceFunnel | undefined;
   tofPages: AnswerPage[];
   mofPages: AnswerPage[];
   bofPages: AnswerPage[];
   query: string;
   showDropdown: boolean;
   hasResults: boolean;
-  results: { type: string; slug: string; title: string }[];
+  results: SearchResult[];
   suggestedQuestions: string[];
   searchRef: React.RefObject<HTMLDivElement>;
   inputRef: React.RefObject<HTMLInputElement>;
   handleSubmit: (e: React.FormEvent) => void;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleSelectResult: (result: { type: string; slug: string; title: string }) => void;
+  handleSelectResult: (result: SearchResult) => void;
   navigateTo: (view: ViewType, service?: HubService, answer?: AnswerPage) => void;
 }
 
 function HomeView({
-  brand, brandName, services, faqs, proof, reviewItems, reviewSummary,
-  isEcommerce, ecommerceFunnel, tofPages, mofPages, bofPages,
-  query, showDropdown, hasResults, results, suggestedQuestions,
-  searchRef, inputRef, handleSubmit, handleInputChange, handleSelectResult, navigateTo,
+  brand,
+  brandName,
+  services,
+  faqs,
+  proof,
+  reviewItems,
+  reviewSummary,
+  isEcommerce,
+  ecommerceFunnel,
+  tofPages,
+  mofPages,
+  bofPages,
+  query,
+  showDropdown,
+  hasResults,
+  results,
+  suggestedQuestions,
+  searchRef,
+  inputRef,
+  handleSubmit,
+  handleInputChange,
+  handleSelectResult,
+  navigateTo,
 }: HomeViewProps) {
   return (
     <>
@@ -321,9 +448,15 @@ function HomeView({
         <div className="container mx-auto px-4 text-center">
           <div className="mb-6">
             {brand?.logoUrl ? (
-              <img src={brand.logoUrl} alt={brandName} className="h-16 sm:h-20 md:h-28 w-auto max-w-[200px] sm:max-w-none object-contain mx-auto" />
+              <img
+                src={brand.logoUrl}
+                alt={brandName}
+                className="h-16 sm:h-20 md:h-28 w-auto max-w-[200px] sm:max-w-none object-contain mx-auto"
+              />
             ) : (
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground">{brandName}</h1>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground">
+                {brandName}
+              </h1>
             )}
           </div>
           <p className="text-xs sm:text-sm uppercase tracking-widest text-muted-foreground mb-6 sm:mb-10 font-medium">
@@ -334,12 +467,17 @@ function HomeView({
           <div className="relative max-w-2xl mx-auto mb-6 sm:mb-8" ref={searchRef}>
             <form onSubmit={handleSubmit} className="relative">
               <div className="search-clean">
-                <input 
-                  ref={inputRef} type="text" value={query} onChange={handleInputChange}
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={query}
+                  onChange={handleInputChange}
                   placeholder="Search FAQs and services..."
                   className="w-full h-12 sm:h-14 md:h-16 px-4 sm:px-6 pr-12 sm:pr-14 text-base md:text-lg bg-transparent rounded-2xl outline-none placeholder:text-muted-foreground text-foreground font-medium"
                 />
-                <button type="submit" disabled={!query.trim()}
+                <button
+                  type="submit"
+                  disabled={!query.trim()}
                   className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 p-2 hover:bg-muted rounded-full transition-colors disabled:opacity-50"
                 >
                   <Search className="h-5 w-5 text-muted-foreground" />
@@ -349,14 +487,23 @@ function HomeView({
               {showDropdown && hasResults && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden">
                   {results.slice(0, 5).map((result, index) => (
-                    <button key={index} onClick={() => handleSelectResult(result)}
+                    <button
+                      key={index}
+                      onClick={() => handleSelectResult(result)}
                       className="w-full px-4 py-3 text-left hover:bg-muted transition-colors flex items-center gap-3"
                     >
-                      {result.type === 'service' ? <Briefcase className="h-4 w-4 text-primary shrink-0" /> :
-                       result.type === 'answer' ? <ShoppingBag className="h-4 w-4 text-primary shrink-0" /> :
-                       <HelpCircle className="h-4 w-4 text-muted-foreground shrink-0" />}
+                      {result.type === 'service' ? (
+                        <Briefcase className="h-4 w-4 text-primary shrink-0" />
+                      ) : result.type === 'answer' ? (
+                        <ShoppingBag className="h-4 w-4 text-primary shrink-0" />
+                      ) : (
+                        <HelpCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+                      )}
+
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{asString(result.title)}</p>
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {asString(result.title)}
+                        </p>
                         <p className="text-xs text-muted-foreground capitalize">
                           {result.type === 'answer' ? 'Buying Help' : asString(result.type)}
                         </p>
@@ -369,13 +516,19 @@ function HomeView({
           </div>
 
           {/* Suggested Questions */}
-          {suggestedQuestions.filter(q => q.length > 0).length > 0 && (
+          {suggestedQuestions.filter((q) => q.length > 0).length > 0 && (
             <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
-              {suggestedQuestions.filter(q => q.length > 0).map((question, i) => (
-                <button key={i} onClick={() => navigateTo('faqs')} className="smart-pill text-sm py-2 px-3">
-                  {question.length > 35 ? question.substring(0, 35) + '...' : question}
-                </button>
-              ))}
+              {suggestedQuestions
+                .filter((q) => q.length > 0)
+                .map((question, i) => (
+                  <button
+                    key={i}
+                    onClick={() => navigateTo('faqs')}
+                    className="smart-pill text-sm py-2 px-3"
+                  >
+                    {question.length > 35 ? question.substring(0, 35) + '...' : question}
+                  </button>
+                ))}
             </div>
           )}
         </div>
@@ -385,7 +538,10 @@ function HomeView({
       {brand?.websiteUrl && (
         <section className="py-6 md:py-8">
           <div className="container mx-auto px-4 text-center">
-            <a href={brand.websiteUrl} target="_blank" rel="noopener noreferrer"
+            <a
+              href={brand.websiteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:bg-primary/90 transition-colors"
             >
               <ExternalLink className="h-5 w-5" /> Visit Website
@@ -399,38 +555,63 @@ function HomeView({
         <section className="pb-12 md:pb-16">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto">
-              <h2 className="text-lg font-semibold text-foreground mb-6 text-center tracking-tight">Buying Help</h2>
+              <h2 className="text-lg font-semibold text-foreground mb-6 text-center tracking-tight">
+                Buying Help
+              </h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <button onClick={() => navigateTo('tof')} className="clean-card p-4 sm:p-5 hover:border-primary/30 transition-all group min-h-[100px] text-left">
+                <button
+                  onClick={() => navigateTo('tof')}
+                  className="clean-card p-4 sm:p-5 hover:border-primary/30 transition-all group min-h-[100px] text-left"
+                >
                   <div className="flex items-center gap-3 mb-2">
                     <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
                       <HelpCircle className="h-4 w-4 text-blue-600" />
                     </div>
-                    <h3 className="font-medium text-foreground">{ecommerceFunnel?.stageLabels?.tof || 'Research'}</h3>
+                    <h3 className="font-medium text-foreground">
+                      {ecommerceFunnel?.stageLabels?.tof || 'Research'}
+                    </h3>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-2">Starting your research? Get answers.</p>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Starting your research? Get answers.
+                  </p>
                   <span className="text-xs text-primary font-medium">{tofPages.length} questions</span>
                 </button>
-                
-                <button onClick={() => navigateTo('mof')} className="clean-card p-4 sm:p-5 hover:border-primary/30 transition-all group min-h-[100px] text-left">
+
+                <button
+                  onClick={() => navigateTo('mof')}
+                  className="clean-card p-4 sm:p-5 hover:border-primary/30 transition-all group min-h-[100px] text-left"
+                >
                   <div className="flex items-center gap-3 mb-2">
                     <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
                       <Scale className="h-4 w-4 text-amber-600" />
                     </div>
-                    <h3 className="font-medium text-foreground">{ecommerceFunnel?.stageLabels?.mof || 'Compare'}</h3>
+                    <h3 className="font-medium text-foreground">
+                      {ecommerceFunnel?.stageLabels?.mof || 'Compare'}
+                    </h3>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-2">Weighing options? Compare products.</p>
-                  <span className="text-xs text-primary font-medium">{mofPages.length} comparisons</span>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Weighing options? Compare products.
+                  </p>
+                  <span className="text-xs text-primary font-medium">
+                    {mofPages.length} comparisons
+                  </span>
                 </button>
-                
-                <button onClick={() => navigateTo('bof')} className="clean-card p-4 sm:p-5 hover:border-primary/30 transition-all group min-h-[100px] text-left">
+
+                <button
+                  onClick={() => navigateTo('bof')}
+                  className="clean-card p-4 sm:p-5 hover:border-primary/30 transition-all group min-h-[100px] text-left"
+                >
                   <div className="flex items-center gap-3 mb-2">
                     <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
                       <ShoppingBag className="h-4 w-4 text-green-600" />
                     </div>
-                    <h3 className="font-medium text-foreground">{ecommerceFunnel?.stageLabels?.bof || 'Decision'}</h3>
+                    <h3 className="font-medium text-foreground">
+                      {ecommerceFunnel?.stageLabels?.bof || 'Decision'}
+                    </h3>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-2">Ready to purchase? Get reassurance.</p>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Ready to purchase? Get reassurance.
+                  </p>
                   <span className="text-xs text-primary font-medium">{bofPages.length} questions</span>
                 </button>
               </div>
@@ -445,7 +626,10 @@ function HomeView({
           <div className="container mx-auto px-4">
             <div className="flex flex-wrap justify-center gap-4 max-w-3xl mx-auto">
               {proof.proofStrip.map((item, index) => (
-                <div key={index} className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-full border border-slate-200">
+                <div
+                  key={index}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-full border border-slate-200"
+                >
                   <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
                   <span className="font-semibold text-slate-800">{asString(item.value)}</span>
                   <span className="text-sm text-slate-600">{asString(item.label)}</span>
@@ -460,15 +644,23 @@ function HomeView({
       {services.length > 0 && (
         <section className="pb-12 md:pb-16">
           <div className="container mx-auto px-4">
-            <div className={cn("max-w-5xl mx-auto", services.length === 1 && "max-w-2xl")}>
+            <div className={cn('max-w-5xl mx-auto', services.length === 1 && 'max-w-2xl')}>
               <h2 className="text-2xl font-bold text-foreground mb-6 tracking-tight">Our Services</h2>
-              <div className={cn("grid gap-5", services.length === 1 ? "grid-cols-1" : "md:grid-cols-3")}>
+              <div className={cn('grid gap-5', services.length === 1 ? 'grid-cols-1' : 'md:grid-cols-3')}>
                 {services.slice(0, 3).map((service) => (
-                  <button key={service.slug} onClick={() => navigateTo('service-detail', service)} className="group text-left">
+                  <button
+                    key={service.slug}
+                    onClick={() => navigateTo('service-detail', service)}
+                    className="group text-left"
+                  >
                     <div className="clean-card h-full overflow-hidden">
                       {service.images?.category ? (
                         <div className="relative h-32 overflow-hidden">
-                          <img src={service.images.category} alt={asString(service.name)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                          <img
+                            src={service.images.category}
+                            alt={asString(service.name)}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
                         </div>
                       ) : (
                         <div className="h-32 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
@@ -476,7 +668,9 @@ function HomeView({
                         </div>
                       )}
                       <div className="p-5">
-                        <h3 className="font-semibold text-foreground mb-1 tracking-tight">{asString(service.name, 'Service')}</h3>
+                        <h3 className="font-semibold text-foreground mb-1 tracking-tight">
+                          {asString(service.name, 'Service')}
+                        </h3>
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {firstNonEmpty(service.summary, service.description?.substring(0, 160), 'Learn more')}
                         </p>
@@ -496,10 +690,14 @@ function HomeView({
       {/* Explore More */}
       <section className="pb-16 md:pb-24">
         <div className="container mx-auto px-4">
-          <p className="text-xs uppercase tracking-widest text-muted-foreground mb-4 text-center">Explore more</p>
+          <p className="text-xs uppercase tracking-widest text-muted-foreground mb-4 text-center">
+            Explore more
+          </p>
           <div className="flex flex-wrap justify-center gap-3 max-w-3xl mx-auto">
             {hubSections.map((section) => (
-              <button key={section.id} onClick={() => navigateTo(section.id as ViewType)}
+              <button
+                key={section.id}
+                onClick={() => navigateTo(section.id as ViewType)}
                 className="px-5 py-2.5 rounded-full bg-white border border-border text-sm font-medium text-muted-foreground hover:border-primary/30 hover:text-primary transition-all hover:shadow-sm"
               >
                 {section.label}
@@ -513,7 +711,13 @@ function HomeView({
 }
 
 // ==================== SERVICES VIEW ====================
-function ServicesView({ services, navigateTo }: { services: HubService[]; navigateTo: (view: ViewType, service?: HubService) => void }) {
+function ServicesView({
+  services,
+  navigateTo,
+}: {
+  services: HubService[];
+  navigateTo: (view: ViewType, service?: HubService) => void;
+}) {
   return (
     <>
       <section className="py-12 md:py-16 border-b border-border/50">
@@ -526,11 +730,19 @@ function ServicesView({ services, navigateTo }: { services: HubService[]; naviga
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {services.map((service) => (
-              <button key={service.slug} onClick={() => navigateTo('service-detail', service)} className="group text-left">
+              <button
+                key={service.slug}
+                onClick={() => navigateTo('service-detail', service)}
+                className="group text-left"
+              >
                 <div className="clean-card h-full overflow-hidden">
                   {service.images?.category ? (
                     <div className="relative h-32 overflow-hidden">
-                      <img src={service.images.category} alt={asString(service.name)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      <img
+                        src={service.images.category}
+                        alt={asString(service.name)}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
                     </div>
                   ) : (
                     <div className="h-32 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
@@ -539,7 +751,9 @@ function ServicesView({ services, navigateTo }: { services: HubService[]; naviga
                   )}
                   <div className="p-5">
                     <h3 className="font-semibold text-foreground mb-1">{asString(service.name)}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{firstNonEmpty(service.summary, service.description)}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {firstNonEmpty(service.summary, service.description)}
+                    </p>
                     <span className="text-sm text-primary font-medium flex items-center gap-1 mt-3 group-hover:gap-2 transition-all">
                       Learn more <ArrowRight className="h-4 w-4" />
                     </span>
@@ -555,38 +769,52 @@ function ServicesView({ services, navigateTo }: { services: HubService[]; naviga
 }
 
 // ==================== SERVICE DETAIL VIEW ====================
-function ServiceDetailView({ service, faqs, brand, navigateTo, isSingleService }: {
-  service: HubService; faqs: HubFAQ[]; brand: HubConfig['brand']; 
-  navigateTo: (view: ViewType) => void; isSingleService: boolean;
+function ServiceDetailView({
+  service,
+  faqs,
+  navigateTo,
+  isSingleService,
+}: {
+  service: HubService;
+  faqs: HubFAQ[];
+  navigateTo: (view: ViewType) => void;
+  isSingleService: boolean;
 }) {
-  const relatedFaqs = faqs.filter(faq => service.relatedFaqSlugs?.includes(faq.slug));
+  const relatedFaqs = faqs.filter((faq) => service.relatedFaqSlugs?.includes(faq.slug));
   const description = service.richDescriptionHtml || service.description || '';
   const whoFor = asArray((service as any).bestFor || service.audience?.secondary);
   const primaryAudience = service.audience?.primary || '';
-  
+
   return (
     <>
       <section className="py-8 md:py-12 border-b border-border/50">
         <div className="container mx-auto px-4">
-          <button onClick={() => navigateTo(isSingleService ? 'home' : 'services')} 
+          <button
+            onClick={() => navigateTo(isSingleService ? 'home' : 'services')}
             className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 mb-4"
           >
             <ChevronLeft className="h-4 w-4" /> {isSingleService ? 'Home' : 'All Services'}
           </button>
         </div>
       </section>
-      
+
       <section className="py-8 md:py-12">
         <div className="container mx-auto px-4">
-          <div className={cn("mx-auto", isSingleService ? "max-w-3xl" : "max-w-4xl")}>
+          <div className={cn('mx-auto', isSingleService ? 'max-w-3xl' : 'max-w-4xl')}>
             {(service.images?.primary || service.images?.hero || service.images?.category) && (
               <div className="w-full h-64 md:h-80 rounded-xl overflow-hidden mb-6">
-                <img src={service.images.primary || service.images.hero || service.images.category} alt={asString(service.name)} className="w-full h-full object-cover" />
+                <img
+                  src={service.images.primary || service.images.hero || service.images.category}
+                  alt={asString(service.name)}
+                  className="w-full h-full object-cover"
+                />
               </div>
             )}
-            
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4 tracking-tight">{asString(service.name)}</h1>
-            
+
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4 tracking-tight">
+              {asString(service.name)}
+            </h1>
+
             <div className="flex flex-wrap gap-3 mb-6">
               {service.priceModel && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-muted rounded-full text-sm text-muted-foreground">
@@ -599,13 +827,16 @@ function ServiceDetailView({ service, faqs, brand, navigateTo, isSingleService }
                 </span>
               )}
             </div>
-            
+
             {service.summary && <p className="text-lg text-muted-foreground mb-8">{asString(service.summary)}</p>}
-            
+
             {description && (
-              <div className="mb-8 prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: description }} />
+              <div
+                className="mb-8 prose prose-slate max-w-none"
+                dangerouslySetInnerHTML={{ __html: description }}
+              />
             )}
-            
+
             {service.keyBenefits && service.keyBenefits.length > 0 && (
               <div className="mb-8">
                 <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -625,7 +856,7 @@ function ServiceDetailView({ service, faqs, brand, navigateTo, isSingleService }
             {(primaryAudience || whoFor.length > 0) && (
               <div className="mb-8 bg-blue-50 rounded-xl p-6 border border-blue-100">
                 <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <Users className="h-5 w-5 text-blue-500" /> Who It's For
+                  <Users className="h-5 w-5 text-blue-500" /> Who It&apos;s For
                 </h2>
                 {primaryAudience && <p className="text-foreground mb-3">{primaryAudience}</p>}
                 {whoFor.length > 0 && (
@@ -654,17 +885,22 @@ function ServiceDetailView({ service, faqs, brand, navigateTo, isSingleService }
                       <div className="flex-1">
                         <h3 className="font-medium text-foreground">{asString(step.step)}</h3>
                         {step.product && <p className="text-sm text-primary mt-1">{asString(step.product)}</p>}
-                        {step.instruction && <p className="text-sm text-muted-foreground mt-1">{asString(step.instruction)}</p>}
+                        {step.instruction && (
+                          <p className="text-sm text-muted-foreground mt-1">{asString(step.instruction)}</p>
+                        )}
                       </div>
                     </li>
                   ))}
                 </ol>
               </div>
             )}
-            
+
             {service.bookingUrl && (
               <div className="mb-8">
-                <a href={service.bookingUrl} target="_blank" rel="noopener noreferrer"
+                <a
+                  href={service.bookingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
                 >
                   Book Now <ArrowRight className="h-4 w-4" />
@@ -681,7 +917,8 @@ function ServiceDetailView({ service, faqs, brand, navigateTo, isSingleService }
                   {relatedFaqs.map((faq) => (
                     <div key={faq.slug} className="bg-card rounded-xl border border-border p-4">
                       <h3 className="font-medium text-foreground mb-2">{asString(faq.question)}</h3>
-                      <div className="prose prose-sm prose-slate max-w-none text-muted-foreground line-clamp-3"
+                      <div
+                        className="prose prose-sm prose-slate max-w-none text-muted-foreground line-clamp-3"
                         dangerouslySetInnerHTML={{ __html: asString(faq.answerHtml) }}
                       />
                     </div>
@@ -697,23 +934,30 @@ function ServiceDetailView({ service, faqs, brand, navigateTo, isSingleService }
 }
 
 // ==================== FAQS VIEW ====================
-function FAQsView({ faqs, navigateTo, selectedFaqSlug, onClearSelection }: {
-  faqs: HubFAQ[]; navigateTo: (view: ViewType) => void; 
-  selectedFaqSlug?: string | null; onClearSelection?: () => void;
+function FAQsView({
+  faqs,
+  navigateTo,
+  selectedFaqSlug,
+  onClearSelection,
+}: {
+  faqs: HubFAQ[];
+  navigateTo: (view: ViewType) => void;
+  selectedFaqSlug?: string | null;
+  onClearSelection?: () => void;
 }) {
-  const categories = [...new Set(faqs.map(faq => asString(faq.category, 'General')))];
+  const categories = [...new Set(faqs.map((faq) => asString(faq.category, 'General')))];
   const [activeCategory, setActiveCategory] = useState(categories[0] || '');
-  
+
   useEffect(() => {
     if (selectedFaqSlug) {
-      const selectedFaq = faqs.find(f => f.slug === selectedFaqSlug);
+      const selectedFaq = faqs.find((f) => f.slug === selectedFaqSlug);
       if (selectedFaq) {
         const faqCategory = asString(selectedFaq.category, 'General');
         if (faqCategory && faqCategory !== activeCategory) setActiveCategory(faqCategory);
       }
     }
   }, [selectedFaqSlug, faqs, activeCategory]);
-  
+
   useEffect(() => {
     if (selectedFaqSlug) {
       const timer = setTimeout(() => {
@@ -726,8 +970,8 @@ function FAQsView({ faqs, navigateTo, selectedFaqSlug, onClearSelection }: {
       return () => clearTimeout(timer);
     }
   }, [selectedFaqSlug, activeCategory, onClearSelection]);
-  
-  const filteredFaqs = activeCategory ? faqs.filter(faq => asString(faq.category) === activeCategory) : faqs;
+
+  const filteredFaqs = activeCategory ? faqs.filter((faq) => asString(faq.category) === activeCategory) : faqs;
 
   return (
     <>
@@ -744,10 +988,14 @@ function FAQsView({ faqs, navigateTo, selectedFaqSlug, onClearSelection }: {
             {categories.length > 1 && (
               <div className="flex flex-wrap gap-2 mb-8">
                 {categories.map((category) => (
-                  <button key={category} onClick={() => setActiveCategory(category)}
+                  <button
+                    key={category}
+                    onClick={() => setActiveCategory(category)}
                     className={cn(
-                      "px-4 py-2 rounded-full text-sm font-medium transition-all",
-                      activeCategory === category ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      'px-4 py-2 rounded-full text-sm font-medium transition-all',
+                      activeCategory === category
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80',
                     )}
                   >
                     {category}
@@ -755,20 +1003,25 @@ function FAQsView({ faqs, navigateTo, selectedFaqSlug, onClearSelection }: {
                 ))}
               </div>
             )}
-            
+
             {filteredFaqs.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">No FAQs available</div>
             ) : (
               <div className="space-y-4">
                 {filteredFaqs.map((faq) => (
-                  <div key={faq.slug} id={`faq-${faq.slug}`}
+                  <div
+                    key={faq.slug}
+                    id={`faq-${faq.slug}`}
                     className={cn(
-                      "bg-card rounded-xl border p-6 transition-all duration-500",
-                      selectedFaqSlug === faq.slug ? "border-primary ring-2 ring-primary/20 shadow-lg" : "border-border"
+                      'bg-card rounded-xl border p-6 transition-all duration-500',
+                      selectedFaqSlug === faq.slug
+                        ? 'border-primary ring-2 ring-primary/20 shadow-lg'
+                        : 'border-border',
                     )}
                   >
                     <h3 className="font-semibold text-foreground mb-3">{asString(faq.question)}</h3>
-                    <div className="prose prose-sm prose-slate max-w-none text-muted-foreground"
+                    <div
+                      className="prose prose-sm prose-slate max-w-none text-muted-foreground"
                       dangerouslySetInnerHTML={{ __html: asString(faq.answerHtml) }}
                     />
                   </div>
@@ -783,18 +1036,22 @@ function FAQsView({ faqs, navigateTo, selectedFaqSlug, onClearSelection }: {
 }
 
 // ==================== PROOF VIEW ====================
-function ProofView({ proof, reviewItems, reviewSummary }: {
-  proof: HubConfig['proof']; 
+function ProofView({
+  proof,
+  reviewItems,
+  reviewSummary,
+}: {
+  proof: HubConfig['proof'];
   reviewItems: { platform?: string; source?: string | null; rating?: number | null; count?: number | null; url?: string | null }[];
   reviewSummary: { total_review_count?: number; average_rating?: number } | null;
 }) {
   const reviewCount = reviewSummary?.total_review_count ?? reviewItems.length;
-  
+
   return (
     <>
       <section className="py-12 md:py-16 border-b border-border/50">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3 tracking-tight">Proof & Trust</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3 tracking-tight">Proof &amp; Trust</h1>
           <p className="text-muted-foreground max-w-lg mx-auto">Why customers trust us</p>
         </div>
       </section>
@@ -807,16 +1064,27 @@ function ProofView({ proof, reviewItems, reviewSummary }: {
                 <h2 className="text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
                   <Star className="h-5 w-5 text-amber-500 fill-amber-500" /> Reviews
                 </h2>
+
                 {reviewSummary && (
                   <div className="bg-amber-50 rounded-xl p-6 border border-amber-100 mb-4">
                     <div className="flex items-center gap-4">
                       {reviewSummary.average_rating && (
-                        <div className="text-4xl font-bold text-amber-600">{reviewSummary.average_rating.toFixed(1)}</div>
+                        <div className="text-4xl font-bold text-amber-600">
+                          {reviewSummary.average_rating.toFixed(1)}
+                        </div>
                       )}
                       <div>
                         <div className="flex gap-1">
                           {[...Array(5)].map((_, i) => (
-                            <Star key={i} className={cn("h-5 w-5", i < Math.floor(reviewSummary.average_rating || 0) ? "text-amber-500 fill-amber-500" : "text-gray-300")} />
+                            <Star
+                              key={i}
+                              className={cn(
+                                'h-5 w-5',
+                                i < Math.floor(reviewSummary.average_rating || 0)
+                                  ? 'text-amber-500 fill-amber-500'
+                                  : 'text-gray-300',
+                              )}
+                            />
                           ))}
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">{reviewCount} reviews</p>
@@ -824,6 +1092,7 @@ function ProofView({ proof, reviewItems, reviewSummary }: {
                     </div>
                   </div>
                 )}
+
                 <div className="grid gap-4 md:grid-cols-2">
                   {reviewItems.slice(0, 4).map((review, idx) => (
                     <div key={idx} className="bg-card rounded-xl border border-border p-4">
@@ -838,7 +1107,12 @@ function ProofView({ proof, reviewItems, reviewSummary }: {
                       </div>
                       {review.count && <p className="text-sm text-muted-foreground">{review.count} reviews</p>}
                       {review.url && (
-                        <a href={review.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline mt-2 inline-block">
+                        <a
+                          href={review.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-primary hover:underline mt-2 inline-block"
+                        >
                           View reviews →
                         </a>
                       )}
@@ -872,7 +1146,12 @@ function ProofView({ proof, reviewItems, reviewSummary }: {
                       <h3 className="font-medium text-foreground">{asString(policy.name)}</h3>
                       {policy.summary && <p className="text-sm text-muted-foreground mt-1">{policy.summary}</p>}
                       {policy.url && (
-                        <a href={policy.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline mt-2 inline-block">
+                        <a
+                          href={policy.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-primary hover:underline mt-2 inline-block"
+                        >
                           Read policy →
                         </a>
                       )}
@@ -889,8 +1168,16 @@ function ProofView({ proof, reviewItems, reviewSummary }: {
 }
 
 // ==================== ENGINE STAGE VIEW ====================
-function EngineStageView({ stage, stageLabel, pages, navigateTo, setSelectedAnswer }: {
-  stage: 'tof' | 'mof' | 'bof'; stageLabel: string; pages: AnswerPage[];
+function EngineStageView({
+  stage,
+  stageLabel,
+  pages,
+  navigateTo,
+  setSelectedAnswer,
+}: {
+  stage: 'tof' | 'mof' | 'bof';
+  stageLabel: string;
+  pages: AnswerPage[];
   navigateTo: (view: ViewType, service?: HubService, answer?: AnswerPage) => void;
   setSelectedAnswer: (answer: AnswerPage) => void;
 }) {
@@ -922,7 +1209,12 @@ function EngineStageView({ stage, stageLabel, pages, navigateTo, setSelectedAnsw
             ) : (
               <div className="space-y-4">
                 {pages.map((page) => (
-                  <button key={page.slug} onClick={() => { setSelectedAnswer(page); navigateTo('answer'); }}
+                  <button
+                    key={page.slug}
+                    onClick={() => {
+                      setSelectedAnswer(page);
+                      navigateTo('answer');
+                    }}
                     className="w-full text-left bg-card rounded-xl border border-border p-5 hover:border-primary/30 hover:shadow-md transition-all"
                   >
                     <h3 className="font-medium text-foreground mb-1">{asString(page.question)}</h3>
@@ -942,38 +1234,53 @@ function EngineStageView({ stage, stageLabel, pages, navigateTo, setSelectedAnsw
 }
 
 // ==================== ANSWER DETAIL VIEW ====================
-function AnswerDetailView({ answer, brand, navigateTo }: {
-  answer: AnswerPage; brand: HubConfig['brand']; navigateTo: (view: ViewType) => void;
+function AnswerDetailView({
+  answer,
+  navigateTo,
+}: {
+  answer: AnswerPage;
+  navigateTo: (view: ViewType) => void;
 }) {
   const phase = normaliseIntentPhase(answer.intent_phase) || 'tof';
-  
-  const answerContent = answer.answer_units?.map(unit => {
-    if (unit.label) return `### ${unit.label}\n${unit.content}`;
-    return unit.content;
-  }).join('\n\n') || '';
+
+  const answerContent =
+    answer.answer_units
+      ?.map((unit) => {
+        if (unit.label) return `### ${unit.label}\n${unit.content}`;
+        return unit.content;
+      })
+      .join('\n\n') || '';
 
   return (
     <>
       <section className="py-8 md:py-12 border-b border-border/50">
         <div className="container mx-auto px-4">
-          <button onClick={() => navigateTo(phase)} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 mb-4">
+          <button
+            onClick={() => navigateTo(phase)}
+            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 mb-4"
+          >
             <ChevronLeft className="h-4 w-4" /> Back
           </button>
         </div>
       </section>
-      
+
       <section className="py-8 md:py-12">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-6 tracking-tight">{asString(answer.question)}</h1>
-            
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-6 tracking-tight">
+              {asString(answer.question)}
+            </h1>
+
             {answerContent && (
               <div className="prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: answerContent }} />
             )}
-            
+
             {answer.url && (
               <div className="mt-8 pt-6 border-t border-border">
-                <a href={answer.url} target="_blank" rel="noopener noreferrer"
+                <a
+                  href={answer.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
                 >
                   Learn More <ExternalLink className="h-4 w-4" />
