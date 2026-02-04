@@ -417,29 +417,16 @@ interface HomeViewProps {
 }
 
 function HomeView({
-  brand,
-  brandName,
-  services,
-  faqs,
-  proof,
-  reviewItems,
-  reviewSummary,
-  isEcommerce,
-  ecommerceFunnel,
-  tofPages,
-  mofPages,
-  bofPages,
-  query,
-  showDropdown,
-  hasResults,
-  results,
-  suggestedQuestions,
-  searchRef,
-  inputRef,
-  handleSubmit,
-  handleInputChange,
-  handleSelectResult,
-  navigateTo,
+
+  brand, brandName, services, faqs, proof, reviewItems, reviewSummary,
+  isEcommerce, ecommerceFunnel, tofPages, mofPages, bofPages,
+  query, showDropdown, hasResults, results, suggestedQuestions,
+  searchRef, inputRef, handleSubmit, handleInputChange, handleSelectResult, navigateTo,
+}: HomeViewProps) {
+
+  void reviewItems;
+  void reviewSummary;
+  
 }: HomeViewProps) {
   return (
     <>
