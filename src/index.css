@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 215 28% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 28% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 28% 12%;
+    --primary: 220 85% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 15% 95%;
+    --secondary-foreground: 215 20% 30%;
+    --muted: 210 15% 92%;
+    --muted-foreground: 215 15% 50%;
+    --accent: 220 85% 45%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 215 20% 88%;
+    --input: 215 20% 88%;
+    --ring: 220 85% 45%;
+    --radius: 1rem;
+    --slate-50: 210 20% 98%;
+    --slate-100: 210 18% 96%;
+    --slate-200: 215 18% 90%;
+    --slate-300: 215 15% 80%;
+    --slate-400: 215 12% 60%;
+    --slate-500: 215 12% 50%;
+    --slate-600: 215 15% 40%;
+    --slate-700: 215 18% 30%;
+    --slate-800: 215 20% 20%;
+    --slate-900: 215 28% 12%;
+    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.06);
+    --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.05), 0 8px 32px rgba(0, 0, 0, 0.08);
+    --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.08), 0 16px 48px rgba(0, 0, 0, 0.1);
+    --shadow-search: 0 4px 20px rgba(0, 0, 0, 0.08), 0 12px 40px rgba(0, 0, 0, 0.06);
+    --shadow-search-focus: 0 8px 32px rgba(0, 0, 0, 0.12), 0 20px 60px rgba(0, 0, 0, 0.08);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .geometric-bg {
+    background-color: hsl(210 20% 98%);
+    background-image: radial-gradient(circle at 2px 2px, hsl(210 15% 88%) 1.5px, transparent 0);
+    background-size: 32px 32px;
+  }
+  .hero-gradient {
+    background: 
+      radial-gradient(ellipse 80% 50% at 10% 20%, rgba(186, 230, 253, 0.35) 0%, transparent 50%),
+      radial-gradient(ellipse 60% 40% at 85% 30%, rgba(147, 197, 253, 0.25) 0%, transparent 45%),
+      radial-gradient(ellipse 70% 50% at 50% 85%, rgba(224, 242, 254, 0.30) 0%, transparent 40%),
+      linear-gradient(180deg, hsl(200 60% 97%) 0%, hsl(0 0% 100%) 35%, hsl(205 50% 98%) 65%, hsl(210 20% 98%) 100%);
+  }
+  .clean-card {
+    background: hsl(var(--card));
+    border-radius: 16px;
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-card);
+    transition: var(--transition-smooth);
+  }
+  .clean-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-card-hover);
+    border-color: hsl(var(--slate-300));
+  }
+  .search-clean {
+    background: hsl(var(--card));
+    border-radius: 16px;
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-search);
+    transition: var(--transition-smooth);
+  }
+  .search-clean:focus-within {
+    border-color: hsl(200 80% 55%);
+    box-shadow: var(--shadow-search-focus), 0 0 0 3px hsl(200 80% 55% / 0.15);
+  }
+  .smart-pill {
+    @apply px-5 py-2.5 rounded-full text-sm font-medium;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--slate-600));
+    box-shadow: var(--shadow-soft);
+    transition: var(--transition-smooth);
+  }
+  .smart-pill:hover {
+    transform: translateY(-2px);
+    background: hsl(var(--slate-50));
+    color: hsl(var(--primary));
+    border-color: hsl(220 85% 80%);
+    box-shadow: var(--shadow-card);
+  }
+}
+
+@layer base {
+  .prose { @apply max-w-none; color: hsl(var(--foreground)); }
+  .prose h1 { @apply text-4xl font-bold mb-4; color: hsl(var(--slate-900)); }
+  .prose h2 { @apply text-2xl font-bold mt-8 mb-4; color: hsl(var(--slate-900)); }
+  .prose h3 { @apply text-xl font-semibold mt-6 mb-3; color: hsl(var(--slate-800)); }
+  .prose p { @apply mb-4 leading-relaxed; color: hsl(var(--slate-600)); max-width: 65ch; }
+  .prose ul, .prose ol { @apply mb-4 ml-6 space-y-2; }
+  .prose li { color: hsl(var(--slate-600)); }
+  .prose a { @apply text-primary hover:underline; }
+  .prose strong { @apply font-semibold; color: hsl(var(--slate-800)); }
+}

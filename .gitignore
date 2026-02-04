@@ -1,0 +1,25 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build output
+dist
+dist-ssr
+*.local
+
+# Editor
+.vscode/*
+.idea
+.DS_Store
+*.sw?
+
+# Environment
+.env
+.env.local
+.env.*.local
