@@ -1221,9 +1221,8 @@ function EngineStageView({
 }
 
 // ==================== ANSWER DETAIL VIEW ====================
-function AnswerDetailView({
-  answer,
-  navigateTo,
+function AnswerDetailView({ answer, brand, navigateTo: _navigateTo }: {
+  answer: AnswerPage; brand: HubConfig['brand']; navigateTo: (view: ViewType) => void;
 }: {
   answer: AnswerPage;
   navigateTo: (view: ViewType) => void;
