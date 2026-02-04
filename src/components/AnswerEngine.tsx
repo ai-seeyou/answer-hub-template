@@ -440,7 +440,6 @@ function HomeView({
   brand,
   brandName,
   services,
-  faqs,
   proof,
   reviewItems,
   reviewSummary,
