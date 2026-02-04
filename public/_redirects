@@ -1,2 +1,3 @@
+/businesses/* /businesses/:splat 200
 /hub.json /hub.json 200
 /* /index.html 200
