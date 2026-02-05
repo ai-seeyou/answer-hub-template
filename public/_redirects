@@ -1,4 +1,3 @@
 /hub.json /businesses/2e76c0d4-9e60-461f-a54b-4c9abfe90055/hub.json 200
 /businesses/* /businesses/:splat 200
-/hub.json /hub.json 200
 /* /index.html 200
